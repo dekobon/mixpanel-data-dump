@@ -2,9 +2,13 @@ package com.github.dekobon.mixpanel.dump
 
 import com.google.common.base.Charsets
 import com.google.common.hash.Hashing
+import com.google.common.io.ByteStreams
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.cli.*
+import org.apache.http.HttpResponse
+import org.apache.http.client.ClientProtocolException
+import org.apache.http.client.ResponseHandler
 import org.apache.http.client.fluent.Request
 import org.apache.http.client.utils.URIBuilder
 
@@ -61,17 +65,16 @@ class DumpMixpanelEvents {
     static dumpData(String apiKey, String apiSecret, String from, String to,
                     String file) {
         def uri = generateUrl(apiKey, apiSecret, from, to)
-        log.info("Requesting Mixpanel API: {}", uri)
 
         def response = Request.Get(uri).execute()
 
         if (file != null) {
+            log.info("Requesting Mixpanel API: {}", uri)
             log.info("Writing data to: {}", file)
             response.saveContent(new File(file))
         } else {
-            def input = response.returnResponse().getEntity().getContent()
-            // TODO: Finish me
-            print "STDOUT - Not implemented"
+            def handler = new StdOutResponseHandler()
+            response.handleResponse(handler)
         }
     }
 
@@ -108,5 +111,17 @@ class DumpMixpanelEvents {
                .putString(argsConcat, Charsets.UTF_8)
                .hash()
                .toString()
+    }
+
+    static class StdOutResponseHandler implements ResponseHandler<Void> {
+        @Override
+        Void handleResponse(HttpResponse response)
+                throws ClientProtocolException, IOException {
+            def input = response.entity.content
+
+            ByteStreams.copy(input, System.out)
+
+            return null
+        }
     }
 }
