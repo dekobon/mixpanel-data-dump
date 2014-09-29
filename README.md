@@ -4,7 +4,7 @@ Mixpanel Data Dump
  This is a simple utility written in Groovy that dumps all Mixpanel data into
  a of JSON serialized objects delinated by new lines.
  
- For more information, see the (Mix Panel documentation)[https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel].
+ For more information, see the [Mix Panel documentation](https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel).
   
  To setup to run from Linux:
  
