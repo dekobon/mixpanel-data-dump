@@ -1,3 +1,5 @@
+package com.github.dekobon.mixpanel.dump
+
 import com.google.common.base.Charsets
 import com.google.common.hash.Hashing
 import groovy.transform.CompileStatic
@@ -14,48 +16,41 @@ class DumpMixpanelEvents {
     static final String API_BASE = "https://data.mixpanel.com/api/2.0/export/"
     static final long timeout = TimeUnit.DAYS.toSeconds(5) // 5 days
 
-    static final List<Option> OPTION_LIST = [
-            OptionBuilder.withArgName("h")
-                         .withLongOpt("help")
-                         .withDescription("Lists available options")
-                         .isRequired(false)
-                         .create(),
-            OptionBuilder.withArgName("d")
-                         .withLongOpt("from_date")
-                         .withDescription("Date to dump data from (YYYY-mm-dd)")
-                         .isRequired(true)
-                         .create(),
-            OptionBuilder.withArgName("t")
-                         .withLongOpt("to_date")
-                         .withDescription("Date to dump data to (YYYY-mm-dd)")
-                         .isRequired(true)
-                         .create(),
-            OptionBuilder.withArgName("k")
-                         .withLongOpt("api_key")
-                         .withDescription("Mixpanel API key")
-                         .isRequired(true)
-                         .create(),
-            OptionBuilder.withArgName("s")
-                         .withLongOpt("api_secret")
-                         .withDescription("Mixpanel API secret")
-                         .isRequired(true)
-                         .create(),
-            OptionBuilder.withArgName("f")
-                         .withLongOpt("file")
-                         .withDescription("File to write output to")
-                         .isRequired(false)
-                         .create()
-    ].asImmutable()
+    static final Options OPTIONS = new Options()
+
+    static {
+        OPTIONS.addOption('h', 'help', false, 'Lists available OPTIONS')
+        OPTIONS.addOption('d', 'from_date', true, 'Date to dump data from (YYYY-mm-dd)')
+        OPTIONS.addOption('t', 'to_date', true, 'Date to dump data from (YYYY-mm-dd)')
+        OPTIONS.addOption('k', 'api_key', true, 'Mixpanel API key')
+        OPTIONS.addOption('s', 'api_secret', true, 'Mixpanel API secret')
+        OPTIONS.addOption('f', 'file', true, 'File to write output to')
+    }
 
     static void main(String[] argv) {
         // create the parser
-        def parser = new GnuParser()
-        def options = new Options()
-        OPTION_LIST.each { options.addOption(it) }
+        CommandLineParser parser = new PosixParser()
 
         try {
             // parse the command line arguments
-            CommandLine line = parser.parse(options, argv);
+            CommandLine line = parser.parse(OPTIONS, argv)
+
+            if (line.hasOption("help") || line.options.length == 0) {
+                def hf = new HelpFormatter()
+                hf.printHelp("dump_mixpanel_events", OPTIONS, true)
+                System.exit(0)
+            }
+
+            def apiKey = line.getOptionValue("api_key")
+            def apiSecret = line.getOptionValue("api_secret")
+            def from = line.getOptionValue("from_date")
+            def to = line.getOptionValue("to_date")
+            def file = line.getOptionValue("file")
+
+            println argv.inspect()
+            println OPTIONS.inspect()
+
+            dumpData(apiKey, apiSecret, from, to, file)
         }
         catch (ParseException exp) {
             // oops, something went wrong
@@ -63,18 +58,21 @@ class DumpMixpanelEvents {
         }
     }
 
-    static dumpData() {
-        def apiKey = System.getProperty("api_key")
-        def apiSecret = System.getProperty('api_secret')
-
-        def from = '2014-09-27'
-        def to = '2014-09-27'
-
+    static dumpData(String apiKey, String apiSecret, String from, String to,
+                    String file) {
         def uri = generateUrl(apiKey, apiSecret, from, to)
         log.info("Requesting Mixpanel API: {}", uri)
 
         def response = Request.Get(uri).execute()
-        response.saveContent(new File("/tmp/mix_data.json"))
+
+        if (file != null) {
+            log.info("Writing data to: {}", file)
+            response.saveContent(new File(file))
+        } else {
+            def input = response.returnResponse().getEntity().getContent()
+            // TODO: Finish me
+            print "STDOUT - Not implemented"
+        }
     }
 
     static long epoc() {
